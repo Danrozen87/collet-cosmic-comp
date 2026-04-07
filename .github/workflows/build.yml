@@ -1,0 +1,51 @@
+name: Build Collet Compositor
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build cosmic-comp (ARM64)
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwayland-dev libxkbcommon-dev \
+            libegl1-mesa-dev libgbm-dev \
+            libinput-dev libudev-dev \
+            libseat-dev libpixman-1-dev \
+            libpango1.0-dev libcairo2-dev \
+            libsystemd-dev libdbus-1-dev \
+            libpipewire-0.3-dev libdisplay-info-dev \
+            libclang-dev pkg-config
+
+      - name: Build
+        run: cargo build --release
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: cosmic-comp-arm64
+          path: target/release/cosmic-comp
+          retention-days: 90
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/master'
+        with:
+          tag_name: latest
+          name: Latest Build
+          files: target/release/cosmic-comp
+          make_latest: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
