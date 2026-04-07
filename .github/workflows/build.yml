@@ -7,32 +7,38 @@ on:
 
 jobs:
   build:
-    name: Build cosmic-comp (ARM64)
+    name: Build cosmic-comp (Fedora ARM64)
     runs-on: ubuntu-24.04-arm
     permissions:
       contents: write
+    container:
+      image: fedora:43
     steps:
+      - name: Install system dependencies
+        run: |
+          dnf install -y \
+            git gcc g++ make cmake clang-devel pkg-config \
+            rust cargo \
+            wayland-devel libxkbcommon-devel \
+            mesa-libEGL-devel mesa-libgbm-devel \
+            libinput-devel systemd-devel \
+            libseat-devel pixman-devel \
+            pango-devel cairo-devel \
+            dbus-devel pipewire-devel \
+            libdisplay-info-devel
+
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            libwayland-dev libxkbcommon-dev \
-            libegl1-mesa-dev libgbm-dev \
-            libinput-dev libudev-dev \
-            libseat-dev libpixman-1-dev \
-            libpango1.0-dev libcairo2-dev \
-            libsystemd-dev libdbus-1-dev \
-            libpipewire-0.3-dev libdisplay-info-dev \
-            libclang-dev pkg-config
-
       - name: Build
         run: cargo build --release
+        env:
+          CARGO_INCREMENTAL: 0
+
+      - name: Verify binary
+        run: |
+          file target/release/cosmic-comp
+          ldd target/release/cosmic-comp
 
       - name: Upload binary
         uses: actions/upload-artifact@v4
