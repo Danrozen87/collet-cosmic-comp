@@ -325,6 +325,10 @@ impl WorkspaceDelta {
     }
 
     pub fn new_gesture_end(delta: f64, velocity: f64, forward: bool) -> Self {
+        // Collet OS: slightly underdamped for a gentle settle with character
+        #[cfg(feature = "collet-animations")]
+        let params: SpringParams = SpringParams::new(0.82, 800.0, 0.001);
+        #[cfg(not(feature = "collet-animations"))]
         let params: SpringParams = SpringParams::new(1.0, 1000.0, 0.0001);
         WorkspaceDelta::GestureEnd {
             start: Instant::now(),

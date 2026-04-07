@@ -48,6 +48,18 @@ pub use self::grabs::*;
 pub const ANIMATION_DURATION: Duration = Duration::from_millis(200);
 pub const MINIMIZE_ANIMATION_DURATION: Duration = Duration::from_millis(320);
 
+// Collet OS: Spring animation parameters for premium feel.
+// damping_ratio < 1.0 = underdamped (gentle overshoot, Apple-like).
+// stiffness controls speed (higher = snappier).
+#[cfg(feature = "collet-animations")]
+use crate::backend::render::animations::spring::{Spring, SpringParams};
+
+#[cfg(feature = "collet-animations")]
+const COLLET_SPRING: fn() -> SpringParams = || SpringParams::new(0.72, 800.0, 0.001);
+
+#[cfg(feature = "collet-animations")]
+const COLLET_MINIMIZE_SPRING: fn() -> SpringParams = || SpringParams::new(0.65, 600.0, 0.001);
+
 #[derive(Debug, Default)]
 pub struct FloatingLayout {
     pub(crate) space: Space<CosmicMapped>,
@@ -151,16 +163,46 @@ impl Animation {
         let previous_rect = *self.previous_geometry();
         let start = *self.start();
         let now = Instant::now();
-        let progress =
-            now.duration_since(start).min(duration).as_secs_f64() / duration.as_secs_f64();
+        let elapsed = now.duration_since(start);
 
-        ease(
-            EaseInOutCubic,
-            EaseRectangle(previous_rect),
-            EaseRectangle(target_rect),
-            progress,
-        )
-        .unwrap()
+        #[cfg(feature = "collet-animations")]
+        {
+            let params = match self {
+                Animation::Minimize { .. } | Animation::Unminimize { .. } => COLLET_MINIMIZE_SPRING(),
+                Animation::Tiled { .. } => COLLET_SPRING(),
+            };
+            let spring = Spring {
+                from: 0.0,
+                to: 1.0,
+                initial_velocity: 0.0,
+                params,
+            };
+            let t = spring.value_at(elapsed).clamp(0.0, 1.05) as f32;
+
+            Rectangle::new(
+                Point::from((
+                    previous_rect.loc.x + ((target_rect.loc.x - previous_rect.loc.x) as f32 * t) as i32,
+                    previous_rect.loc.y + ((target_rect.loc.y - previous_rect.loc.y) as f32 * t) as i32,
+                )),
+                Size::from((
+                    previous_rect.size.w + ((target_rect.size.w - previous_rect.size.w) as f32 * t) as i32,
+                    previous_rect.size.h + ((target_rect.size.h - previous_rect.size.h) as f32 * t) as i32,
+                )),
+            )
+        }
+
+        #[cfg(not(feature = "collet-animations"))]
+        {
+            let progress =
+                elapsed.min(duration).as_secs_f64() / duration.as_secs_f64();
+            ease(
+                EaseInOutCubic,
+                EaseRectangle(previous_rect),
+                EaseRectangle(target_rect),
+                progress,
+            )
+            .unwrap()
+        }
     }
 }
 
@@ -1389,11 +1431,28 @@ impl FloatingLayout {
     pub fn update_animation_state(&mut self) {
         let was_empty = self.animations.is_empty();
         self.animations.retain(|_, anim| {
-            let duration = match anim {
-                Animation::Tiled { .. } => ANIMATION_DURATION,
-                _ => MINIMIZE_ANIMATION_DURATION,
-            };
-            Instant::now().duration_since(*anim.start()) < duration
+            #[cfg(feature = "collet-animations")]
+            {
+                let params = match anim {
+                    Animation::Tiled { .. } => COLLET_SPRING(),
+                    _ => COLLET_MINIMIZE_SPRING(),
+                };
+                let spring = Spring {
+                    from: 0.0,
+                    to: 1.0,
+                    initial_velocity: 0.0,
+                    params,
+                };
+                Instant::now().duration_since(*anim.start()) < spring.duration()
+            }
+            #[cfg(not(feature = "collet-animations"))]
+            {
+                let duration = match anim {
+                    Animation::Tiled { .. } => ANIMATION_DURATION,
+                    _ => MINIMIZE_ANIMATION_DURATION,
+                };
+                Instant::now().duration_since(*anim.start()) < duration
+            }
         });
         if self.animations.is_empty() != was_empty {
             self.dirty.store(true, Ordering::SeqCst);

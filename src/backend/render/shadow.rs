@@ -81,10 +81,21 @@ impl ShadowShader {
         {
             let shader = Self::get(renderer);
 
-            let softness = 25.;
-            let spread = 5.;
-            let offset = [0., 5.];
-            let color = [0., 0., 0., if dark_mode { 0.45 } else { 0.35 }];
+            // Collet OS: softer, more diffuse shadows for a refined, airy feel
+            #[cfg(feature = "collet-animations")]
+            let (softness, spread, offset, color) = (
+                35.,                                                    // softer blur
+                3.,                                                     // tighter spread
+                [0., 8.],                                               // more vertical lift
+                [0., 0., 0., if dark_mode { 0.30 } else { 0.18 }],     // more subtle
+            );
+            #[cfg(not(feature = "collet-animations"))]
+            let (softness, spread, offset, color) = (
+                25.,
+                5.,
+                [0., 5.],
+                [0., 0., 0., if dark_mode { 0.45 } else { 0.35 }],
+            );
             let radius = radius.map(|r| ceil(r as f64));
             let radius = [
                 radius[3], // top_left

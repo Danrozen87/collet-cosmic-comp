@@ -116,8 +116,9 @@ optional = true
 
 [features]
 debug = ["egui", "egui_plot", "smithay-egui", "anyhow/backtrace"]
-default = ["systemd"]
+default = ["systemd", "collet-animations"]
 systemd = ["libsystemd", "logind-zbus"]
+collet-animations = []  # Spring physics for window animations (Collet OS)
 profile-with-tracy = ["profiling/profile-with-tracy", "tracy-client/default"]
 profile-with-tracy-gpu = ["profile-with-tracy", "smithay/tracy_gpu_profiling"]
 
