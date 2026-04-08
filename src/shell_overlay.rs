@@ -17,7 +17,9 @@ use smithay::{
     utils::Transform,
 };
 
-use crate::backend::render::element::{AsGlowRenderer, CosmicElement};
+use crate::backend::render::element::{AsGlowRenderer, CosmicElement, FromGlesError};
+use crate::shell::{CosmicMappedRenderElement, WorkspaceRenderElement};
+use smithay::backend::renderer::element::RenderElement;
 
 /// Cached shell buffer, regenerated when output dimensions change.
 static SHELL_BUFFER: std::sync::Mutex<Option<(i32, i32, MemoryRenderBuffer)>> =
@@ -113,6 +115,9 @@ pub fn render_shell_element<R>(
 where
     R: AsGlowRenderer,
     R::TextureId: Send + Clone + 'static,
+    R::Error: FromGlesError,
+    CosmicMappedRenderElement<R>: RenderElement<R>,
+    WorkspaceRenderElement<R>: RenderElement<R>,
 {
     let output_size = output.current_mode()?.size;
     let w = output_size.w;
