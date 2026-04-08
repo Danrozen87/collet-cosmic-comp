@@ -1019,6 +1019,12 @@ where
         ControlFlow::Continue(())
     })?;
 
+    // Collet Shell overlay -- rendered below all layer surfaces (background layer).
+    // Visible when no wallpaper provider (e.g. cosmic-bg) is running.
+    if let Some(shell_elem) = crate::shell_overlay::render_shell_element(renderer, output) {
+        elements.push(shell_elem);
+    }
+
     Ok(elements)
 }
 

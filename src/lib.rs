@@ -43,6 +43,7 @@ pub mod input;
 mod logger;
 pub mod session;
 pub mod shell;
+pub mod shell_overlay;
 pub mod state;
 #[cfg(feature = "systemd")]
 pub mod systemd;
